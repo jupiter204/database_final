@@ -32,6 +32,3 @@ services:
       volumes:
         - ./postgres_data:/var/lib/postgresql/data
       restart: always
-  
-volumes:
-  postgres_production_data:
