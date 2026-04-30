@@ -6,7 +6,7 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
 # Stage 2: Final Image
-FROM alpine:latest
+FROM alpine:3.22.4
 WORKDIR /root/
 COPY --from=builder /app/main .
 EXPOSE 8080

@@ -1,0 +1,96 @@
+basePath: /
+definitions:
+  main.MaintenanceRequest:
+    properties:
+      description:
+        example: 螢幕故障
+        type: string
+      equipment_id:
+        example: E001
+        type: string
+      reporter_type:
+        example: staff
+        type: string
+    required:
+    - description
+    - equipment_id
+    - reporter_type
+    type: object
+host: jupiterhsu.ddns.net
+info:
+  contact: {}
+  description: 這是一個整合 PostgreSQL 與 Gin 的設備管理系統。
+  title: 設備管理 API
+  version: "1.0"
+paths:
+  /api/public/equipment:
+    get:
+      consumes:
+      - application/json
+      description: 透過 asset_code 取得特定設備的資訊
+      parameters:
+      - description: 設備資產編號
+        in: query
+        name: asset_code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功回傳設備資訊
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 資產編號必填
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: 查詢不到設備
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 查詢設備詳情
+      tags:
+      - public
+  /api/public/report:
+    post:
+      consumes:
+      - application/json
+      description: 為特定設備建立一筆新的報修紀錄。會先檢查設備是否存在，且目前無未解決的報修。
+      parameters:
+      - description: 報修資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.MaintenanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 報修紀錄已成功送出
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 參數錯誤或已有未解決紀錄
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: 設備不存在
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 資料庫錯誤
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 提交報修紀錄
+      tags:
+      - public
+swagger: "2.0"

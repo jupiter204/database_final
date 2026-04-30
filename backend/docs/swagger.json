@@ -1,0 +1,140 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "這是一個整合 PostgreSQL 與 Gin 的設備管理系統。",
+        "title": "設備管理 API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "jupiterhsu.ddns.net",
+    "basePath": "/",
+    "paths": {
+        "/api/public/equipment": {
+            "get": {
+                "description": "透過 asset_code 取得特定設備的資訊",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "查詢設備詳情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "設備資產編號",
+                        "name": "asset_code",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功回傳設備資訊",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "資產編號必填",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "查詢不到設備",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/report": {
+            "post": {
+                "description": "為特定設備建立一筆新的報修紀錄。會先檢查設備是否存在，且目前無未解決的報修。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "提交報修紀錄",
+                "parameters": [
+                    {
+                        "description": "報修資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.MaintenanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "報修紀錄已成功送出",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "參數錯誤或已有未解決紀錄",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "設備不存在",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "資料庫錯誤",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.MaintenanceRequest": {
+            "type": "object",
+            "required": [
+                "description",
+                "equipment_id",
+                "reporter_type"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "螢幕故障"
+                },
+                "equipment_id": {
+                    "type": "string",
+                    "example": "E001"
+                },
+                "reporter_type": {
+                    "type": "string",
+                    "example": "staff"
+                }
+            }
+        }
+    }
+}
