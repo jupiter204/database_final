@@ -15,6 +15,186 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/auth/login": {
+            "post": {
+                "description": "驗證使用者名稱與密碼，並回傳 Access Token 與 Refresh Token。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "使用者登入",
+                "parameters": [
+                    {
+                        "description": "登入資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "登入成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "帳號或密碼錯誤",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "description": "使用有效的 Refresh Token 換取新的 Access Token (此操作不會更換 Refresh Token)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "刷新 Access Token",
+                "parameters": [
+                    {
+                        "description": "Refresh Token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "刷新成功，回傳新的 access_token",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Token 無效、已過期或權限錯誤",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/equipments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "回傳資料庫中所有設備的完整資訊 (僅限管理員與維修人員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "獲取所有設備詳情",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.EquipmentDetail"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "資料庫查詢失敗",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/maintenance-records": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "取得所有維修紀錄，可透過 show_resolved 參數決定是否包含已處理的項目",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "取得維修紀錄列表",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "是否顯示已處理的紀錄 (true/false)",
+                        "name": "show_resolved",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功回傳維修紀錄列表",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "資料庫查詢失敗",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/public/equipment": {
             "get": {
                 "description": "透過 asset_code 取得特定設備的資訊",
@@ -64,7 +244,7 @@ const docTemplate = `{
         },
         "/api/public/report": {
             "post": {
-                "description": "為特定設備建立一筆新的報修紀錄。會先檢查設備是否存在，且目前無未解決的報修。",
+                "description": "Create a new maintenance record for a specific equipment. Checks if equipment exists and has no unresolved reports.",
                 "consumes": [
                     "application/json"
                 ],
@@ -74,10 +254,10 @@ const docTemplate = `{
                 "tags": [
                     "public"
                 ],
-                "summary": "提交報修紀錄",
+                "summary": "Post maintenance record",
                 "parameters": [
                     {
-                        "description": "報修資訊",
+                        "description": "Maintenance Information",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -88,28 +268,28 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "報修紀錄已成功送出",
+                        "description": "Maintenance record submitted successfully",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "參數錯誤或已有未解決紀錄",
+                        "description": "Invalid parameters or existing unresolved record",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "設備不存在",
+                        "description": "Equipment not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "資料庫錯誤",
+                        "description": "Database error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -120,6 +300,52 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.EquipmentDetail": {
+            "type": "object",
+            "properties": {
+                "asset_code": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "last_maint_date": {
+                    "type": "string"
+                },
+                "lid": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "maint_interval": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
         "main.MaintenanceRequest": {
             "type": "object",
             "required": [
@@ -130,17 +356,36 @@ const docTemplate = `{
             "properties": {
                 "description": {
                     "type": "string",
-                    "example": "螢幕故障"
+                    "example": "有異音"
                 },
                 "equipment_id": {
                     "type": "string",
-                    "example": "E001"
+                    "example": "6f17afc0-1759-45ba-9081-da035eaeea60"
                 },
                 "reporter_type": {
                     "type": "string",
-                    "example": "staff"
+                    "example": "public"
                 }
             }
+        },
+        "main.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "請輸入 \"Bearer \u003cYour_JWT_Token\u003e\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
