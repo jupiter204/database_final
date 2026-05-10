@@ -1,6 +1,55 @@
 basePath: /
 definitions:
-  main.EquipmentDetail:
+  models.CreateEquipmentRequest:
+    properties:
+      asset_code:
+        type: string
+      category:
+        type: string
+      last_maint_date:
+        type: string
+      location:
+        type: string
+      maint_interval:
+        type: integer
+      name:
+        type: string
+    required:
+    - asset_code
+    - name
+    type: object
+  models.CreateUserRequest:
+    properties:
+      name:
+        type: string
+      password:
+        type: string
+      role:
+        description: '''admin'' or ''staff'''
+        type: string
+      username:
+        type: string
+    required:
+    - name
+    - password
+    - role
+    - username
+    type: object
+  models.DeleteEquipmentRequest:
+    properties:
+      lid:
+        type: string
+    required:
+    - lid
+    type: object
+  models.DeleteUserRequest:
+    properties:
+      lid:
+        type: string
+    required:
+    - lid
+    type: object
+  models.EquipmentDetail:
     properties:
       asset_code:
         type: string
@@ -19,7 +68,28 @@ definitions:
       status:
         type: string
     type: object
-  main.LoginRequest:
+  models.EquipmentPublicResponse:
+    properties:
+      asset_code:
+        type: string
+      category:
+        type: string
+      has_active_report:
+        type: boolean
+      lid:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+  models.LoginRequest:
     properties:
       password:
         example: admin
@@ -31,34 +101,100 @@ definitions:
     - password
     - username
     type: object
-  main.MaintenanceRequest:
+  models.MaintenanceRecord:
     properties:
+      asset_code:
+        type: string
+      created_at:
+        type: string
       description:
-        example: 有異音
         type: string
       equipment_id:
-        example: 6f17afc0-1759-45ba-9081-da035eaeea60
+        type: string
+      equipment_name:
+        type: string
+      is_resolved:
+        type: boolean
+      lid:
         type: string
       reporter_type:
-        example: public
+        type: string
+      resolve_note:
+        type: string
+    type: object
+  models.MaintenanceRequest:
+    properties:
+      description:
+        type: string
+      equipment_id:
+        type: string
+      reporter_type:
         type: string
     required:
     - description
     - equipment_id
     - reporter_type
     type: object
-  main.RefreshRequest:
+  models.MessageResponse:
+    properties:
+      message:
+        example: operation successful
+        type: string
+    type: object
+  models.RefreshRequest:
     properties:
       refresh_token:
         type: string
     required:
     - refresh_token
     type: object
+  models.ResolveMaintenanceRequest:
+    properties:
+      lid:
+        description: 維修紀錄列表的lid
+        type: string
+      resolve_note:
+        type: string
+    required:
+    - lid
+    - resolve_note
+    type: object
+  models.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  models.UpdateUserRequest:
+    properties:
+      lid:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+    required:
+    - lid
+    type: object
+  models.UserResponse:
+    properties:
+      lid:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
 host: jupiterhsu.ddns.net
 info:
   contact: {}
   description: 這是一個整合 PostgreSQL 與 Gin 的設備管理系統。
-  title: 設備管理 API
+  title: 設備管理系統 API
   version: "1.0"
 paths:
   /api/auth/login:
@@ -72,30 +208,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/main.LoginRequest'
+          $ref: '#/definitions/models.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: 登入成功
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.TokenResponse'
         "400":
           description: 請求格式錯誤
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "401":
           description: 帳號或密碼錯誤
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: 伺服器內部錯誤
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: 使用者登入
       tags:
       - auth
@@ -103,30 +235,91 @@ paths:
     post:
       consumes:
       - application/json
-      description: 使用有效的 Refresh Token 換取新的 Access Token (此操作不會更換 Refresh Token)
+      description: 使用 Refresh Token 換取新的 Access Token
       parameters:
       - description: Refresh Token
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/main.RefreshRequest'
+          $ref: '#/definitions/models.RefreshRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: 刷新成功，回傳新的 access_token
+          description: 刷新成功
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.TokenResponse'
         "401":
-          description: Token 無效、已過期或權限錯誤
+          description: Token 無效或過期
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: 刷新 Access Token
       tags:
       - auth
+  /api/private/equipment:
+    delete:
+      consumes:
+      - application/json
+      description: 刪除一個設備紀錄 (僅限管理員)
+      parameters:
+      - description: 刪除設備請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteEquipmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功刪除設備
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: 請求格式錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除設備
+      tags:
+      - private
+    post:
+      consumes:
+      - application/json
+      description: 建立一個新的設備紀錄 (僅限管理員)
+      parameters:
+      - description: 新增設備請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateEquipmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 成功建立設備
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: 請求格式錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 新增設備
+      tags:
+      - private
   /api/private/equipments:
     get:
       consumes:
@@ -139,13 +332,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/main.EquipmentDetail'
+              $ref: '#/definitions/models.EquipmentDetail'
             type: array
         "500":
-          description: 資料庫查詢失敗
+          description: 伺服器內部錯誤
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 獲取所有設備詳情
@@ -155,28 +347,193 @@ paths:
     get:
       consumes:
       - application/json
-      description: 取得所有維修紀錄，可透過 show_resolved 參數決定是否包含已處理的項目
+      description: 取得所有維修紀錄 (僅限管理員與維修人員)
       parameters:
-      - description: 是否顯示已處理的紀錄 (true/false)
+      - description: 是否顯示已解決 (true/false)
         in: query
-        name: show_resolved
-        type: boolean
+        name: resolved
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功回傳維修紀錄列表
+          description: OK
           schema:
-            additionalProperties: true
-            type: object
+            items:
+              $ref: '#/definitions/models.MaintenanceRecord'
+            type: array
         "500":
-          description: 資料庫查詢失敗
+          description: 伺服器內部錯誤
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 取得維修紀錄列表
+      tags:
+      - private
+  /api/private/maintenance-records/resolve:
+    patch:
+      consumes:
+      - application/json
+      description: 將維修紀錄標記為已解決，並將設備狀態恢復為 normal (僅限管理員與維修人員)。註：lid是維修紀錄列表的lid
+      parameters:
+      - description: 維修完成請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResolveMaintenanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功修復
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: 請求格式錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: 紀錄不存在
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 標記維修完成
+      tags:
+      - private
+  /api/private/user:
+    delete:
+      consumes:
+      - application/json
+      description: 刪除使用者 (僅限管理員)
+      parameters:
+      - description: 刪除使用者請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功刪除使用者
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: 請求格式錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: 使用者不存在
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除使用者
+      tags:
+      - private
+    patch:
+      consumes:
+      - application/json
+      description: 修改使用者資料 (僅限管理員)
+      parameters:
+      - description: 修改使用者請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功修改使用者
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: 請求格式錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: 使用者不存在
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 修改使用者資料
+      tags:
+      - private
+    post:
+      consumes:
+      - application/json
+      description: 新增一個使用者 (僅限管理員)
+      parameters:
+      - description: 新增使用者請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 成功新增使用者
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: 請求格式錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: 使用者名稱已存在
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 新增使用者
+      tags:
+      - private
+  /api/private/users:
+    get:
+      consumes:
+      - application/json
+      description: 取得所有使用者資料 (僅限管理員)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 使用者列表
+          schema:
+            items:
+              $ref: '#/definitions/models.UserResponse'
+            type: array
+        "500":
+          description: 伺服器內部錯誤
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 查看使用者列表
       tags:
       - private
   /api/public/equipment:
@@ -196,18 +553,15 @@ paths:
         "200":
           description: 成功回傳設備資訊
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.EquipmentPublicResponse'
         "400":
           description: 資產編號必填
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: 查詢不到設備
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: 查詢設備詳情
       tags:
       - public
@@ -215,39 +569,34 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new maintenance record for a specific equipment. Checks
-        if equipment exists and has no unresolved reports.
+      description: 建立一個新的報修紀錄，並將設備狀態更新為 faulty。會檢查是否已有未處理的紀錄。
       parameters:
-      - description: Maintenance Information
+      - description: 報修資訊
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/main.MaintenanceRequest'
+          $ref: '#/definitions/models.MaintenanceRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Maintenance record submitted successfully
+          description: 成功提交報修紀錄
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.MessageResponse'
         "400":
-          description: Invalid parameters or existing unresolved record
+          description: 請求格式錯誤或已有未處理紀錄
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
-          description: Equipment not found
+          description: 設備不存在
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
-          description: Database error
+          description: 伺服器內部錯誤
           schema:
-            additionalProperties: true
-            type: object
-      summary: Post maintenance record
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 提交報修紀錄
       tags:
       - public
 securityDefinitions:
