@@ -69,6 +69,16 @@ type CreateEquipmentRequest struct {
 	Location      string `json:"location"`
 }
 
+// UpdateEquipmentRequest represents the request to update equipment details
+type UpdateEquipmentRequest struct {
+	LID           string  `json:"lid" binding:"required"`
+	AssetCode     *string `json:"asset_code"`
+	Name          *string `json:"name"`
+	Category      *string `json:"category"`
+	MaintInterval *int    `json:"maint_interval"`
+	Location      *string `json:"location"`
+}
+
 // DeleteEquipmentRequest represents the request to remove equipment
 type DeleteEquipmentRequest struct {
 	LID string `json:"lid" binding:"required"`

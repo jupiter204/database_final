@@ -86,6 +86,7 @@ func main() {
 			admin.Use(middleware.RoleRequired("admin"))
 			{
 				admin.POST("/equipment", h.PostEquipment)
+				admin.PATCH("/equipment", h.UpdateEquipment)
 				admin.DELETE("/equipment", h.DeleteEquipment)
 
 				// 使用者管理

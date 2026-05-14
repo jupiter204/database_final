@@ -1,13 +1,12 @@
 services:
   # 現在只有這一個 Nginx 了
-  nginx:
-    image: nginx:stable-alpine
+  frontend:
+    build: ./frontend
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./frontend/build:/usr/share/nginx/html:ro # 直接把編譯好的檔案掛載進來
       - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
