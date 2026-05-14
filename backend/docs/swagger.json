@@ -2,13 +2,548 @@
     "swagger": "2.0",
     "info": {
         "description": "這是一個整合 PostgreSQL 與 Gin 的設備管理系統。",
-        "title": "設備管理 API",
+        "title": "設備管理系統 API",
         "contact": {},
         "version": "1.0"
     },
     "host": "jupiterhsu.ddns.net",
     "basePath": "/",
     "paths": {
+        "/api/auth/login": {
+            "post": {
+                "description": "驗證使用者名稱與密碼，並回傳 Access Token 與 Refresh Token。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "使用者登入",
+                "parameters": [
+                    {
+                        "description": "登入資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "登入成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "帳號或密碼錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "description": "使用 Refresh Token 換取新的 Access Token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "刷新 Access Token",
+                "parameters": [
+                    {
+                        "description": "Refresh Token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "刷新成功",
+                        "schema": {
+                            "$ref": "#/definitions/models.TokenResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Token 無效或過期",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/equipment": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "建立一個新的設備紀錄 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "新增設備",
+                "parameters": [
+                    {
+                        "description": "新增設備請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateEquipmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "成功建立設備",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "刪除一個設備紀錄 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "刪除設備",
+                "parameters": [
+                    {
+                        "description": "刪除設備請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteEquipmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功刪除設備",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/equipments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "回傳資料庫中所有設備的完整資訊 (僅限管理員與維修人員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "獲取所有設備詳情",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EquipmentDetail"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/maintenance-records": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "取得所有維修紀錄 (僅限管理員與維修人員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "取得維修紀錄列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "是否顯示已解決 (true/false)",
+                        "name": "resolved",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MaintenanceRecord"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/maintenance-records/resolve": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "將維修紀錄標記為已解決，並將設備狀態恢復為 normal (僅限管理員與維修人員)。註：lid是維修紀錄列表的lid",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "標記維修完成",
+                "parameters": [
+                    {
+                        "description": "維修完成請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ResolveMaintenanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功修復",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "紀錄不存在",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/user": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "新增一個使用者 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "新增使用者",
+                "parameters": [
+                    {
+                        "description": "新增使用者請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "成功新增使用者",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "使用者名稱已存在",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "刪除使用者 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "刪除使用者",
+                "parameters": [
+                    {
+                        "description": "刪除使用者請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功刪除使用者",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "使用者不存在",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "修改使用者資料 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "修改使用者資料",
+                "parameters": [
+                    {
+                        "description": "修改使用者請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功修改使用者",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "使用者不存在",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/private/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "取得所有使用者資料 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "查看使用者列表",
+                "responses": {
+                    "200": {
+                        "description": "使用者列表",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.UserResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/public/equipment": {
             "get": {
                 "description": "透過 asset_code 取得特定設備的資訊",
@@ -35,22 +570,19 @@
                     "200": {
                         "description": "成功回傳設備資訊",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.EquipmentPublicResponse"
                         }
                     },
                     "400": {
                         "description": "資產編號必填",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "查詢不到設備",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -58,7 +590,7 @@
         },
         "/api/public/report": {
             "post": {
-                "description": "為特定設備建立一筆新的報修紀錄。會先檢查設備是否存在，且目前無未解決的報修。",
+                "description": "建立一個新的報修紀錄，並將設備狀態更新為 faulty。會檢查是否已有未處理的紀錄。",
                 "consumes": [
                     "application/json"
                 ],
@@ -76,37 +608,33 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.MaintenanceRequest"
+                            "$ref": "#/definitions/models.MaintenanceRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "報修紀錄已成功送出",
+                        "description": "成功提交報修紀錄",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.MessageResponse"
                         }
                     },
                     "400": {
-                        "description": "參數錯誤或已有未解決紀錄",
+                        "description": "請求格式錯誤或已有未處理紀錄",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "設備不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "資料庫錯誤",
+                        "description": "伺服器內部錯誤",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -114,7 +642,190 @@
         }
     },
     "definitions": {
-        "main.MaintenanceRequest": {
+        "models.CreateEquipmentRequest": {
+            "type": "object",
+            "required": [
+                "asset_code",
+                "name"
+            ],
+            "properties": {
+                "asset_code": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "last_maint_date": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "maint_interval": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "password",
+                "role",
+                "username"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "description": "'admin' or 'staff'",
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DeleteEquipmentRequest": {
+            "type": "object",
+            "required": [
+                "lid"
+            ],
+            "properties": {
+                "lid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DeleteUserRequest": {
+            "type": "object",
+            "required": [
+                "lid"
+            ],
+            "properties": {
+                "lid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EquipmentDetail": {
+            "type": "object",
+            "properties": {
+                "asset_code": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "last_maint_date": {
+                    "type": "string"
+                },
+                "lid": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "maint_interval": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EquipmentPublicResponse": {
+            "type": "object",
+            "properties": {
+                "asset_code": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "has_active_report": {
+                    "type": "boolean"
+                },
+                "lid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "error message"
+                }
+            }
+        },
+        "models.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "models.MaintenanceRecord": {
+            "type": "object",
+            "properties": {
+                "asset_code": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "equipment_id": {
+                    "type": "string"
+                },
+                "equipment_name": {
+                    "type": "string"
+                },
+                "is_resolved": {
+                    "type": "boolean"
+                },
+                "lid": {
+                    "type": "string"
+                },
+                "reporter_type": {
+                    "type": "string"
+                },
+                "resolve_note": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MaintenanceRequest": {
             "type": "object",
             "required": [
                 "description",
@@ -123,18 +834,107 @@
             ],
             "properties": {
                 "description": {
-                    "type": "string",
-                    "example": "螢幕故障"
+                    "type": "string"
                 },
                 "equipment_id": {
-                    "type": "string",
-                    "example": "E001"
+                    "type": "string"
                 },
                 "reporter_type": {
-                    "type": "string",
-                    "example": "staff"
+                    "type": "string"
                 }
             }
+        },
+        "models.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "operation successful"
+                }
+            }
+        },
+        "models.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResolveMaintenanceRequest": {
+            "type": "object",
+            "required": [
+                "lid",
+                "resolve_note"
+            ],
+            "properties": {
+                "lid": {
+                    "description": "維修紀錄列表的lid",
+                    "type": "string"
+                },
+                "resolve_note": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateUserRequest": {
+            "type": "object",
+            "required": [
+                "lid"
+            ],
+            "properties": {
+                "lid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserResponse": {
+            "type": "object",
+            "properties": {
+                "lid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "請輸入 \"Bearer \u003cYour_JWT_Token\u003e\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }
