@@ -199,6 +199,55 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "修改一個設備紀錄 (僅限管理員)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "修改設備",
+                "parameters": [
+                    {
+                        "description": "修改設備請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateEquipmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功修改設備",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "請求格式錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "伺服器內部錯誤",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/private/equipments": {
@@ -887,6 +936,32 @@
                     "type": "string"
                 },
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateEquipmentRequest": {
+            "type": "object",
+            "required": [
+                "lid"
+            ],
+            "properties": {
+                "asset_code": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "lid": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "maint_interval": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
