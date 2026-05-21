@@ -1,29 +1,22 @@
-# 第一階段：建置 (Build Stage)
-FROM node:20-alpine AS builder
-
-# 設定工作目錄
+# --- 第一階段：使用 Bun 進行編譯建置 ---
+FROM oven/bun:1.3.14-alpine AS builder
 WORKDIR /app
 
-# 複製 package.json 與 package-lock.json (利用 Docker Cache 機制)
-COPY package*.json ./
+# 複製環境設定與套件清單
+# 將原本的 COPY package.json bun.lockb ./ 改為：
+COPY package.json bun.lockb* ./
 
-# 安裝依賴套件 (加入 --legacy-peer-deps 解決 vite-plugin-pwa 的相依性衝突)
-RUN npm install --legacy-peer-deps
+# 使用 Bun 高速安裝套件
+RUN bun install --frozen-lockfile
 
-# 複製所有前端原始碼
+# 複製完整原始碼並進行打包
 COPY . .
+RUN bun run build
 
-# 執行 Vite 打包指令 (會輸出到 /app/dist)
-RUN npm run build
-
-# 第二階段：Nginx 部署 (Production Stage)
-FROM nginx:stable-alpine
-
-# 從第一階段複製打包好的 dist 資料夾，放到 Nginx 預設的靜態檔案伺服器目錄
+# --- 第二階段：使用 Nginx 部署靜態檔案 ---
+FROM nginx:alpine
+# 根據你的 nginx.conf 設定複製打包後的檔案（Vite 預設為 dist）
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 曝露 80 port
 EXPOSE 80
-
-# 啟動 Nginx
 CMD ["nginx", "-g", "daemon off;"]

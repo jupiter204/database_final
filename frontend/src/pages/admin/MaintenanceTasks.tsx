@@ -18,10 +18,11 @@ const MaintenanceTasks: React.FC = () => {
   const fetchTasks = async () => {
     setLoading(true); // 開始轉圈圈
     try {
-      const res = await apiClient.get('/private/maintenance-records');
-      // 過濾出尚未解決的任務 (以防後端回傳所有任務)
-      const pendingTasks = (res.data || []).filter((task: any) => !task.is_resolved);
-      setTasks(pendingTasks);
+      // 1. 在網址加上 resolved=false 參數，請後端直接過濾
+      const res = await apiClient.get('/private/maintenance-records?resolved=false');
+      
+      // 2. 由於後端已經精準過濾，直接將資料存入 state，避免不必要的前端 filter
+      setTasks(res.data || []);
     } catch (error) {
       console.error('無法取得維修任務清單:', error);
     } finally {
@@ -85,7 +86,12 @@ const MaintenanceTasks: React.FC = () => {
                     {/* 任務詳細時間與來源 */}
                     <div className="text-sm text-muted-foreground flex gap-4">
                       <span>通報時間: {new Date(task.created_at).toLocaleString()}</span>
-                      <span>通報人身分: {task.reporter_type === 'public' ? '一般民眾' : '健身房員工'}</span>
+                      <span>
+                        通報人身分: {
+                          task.description.includes('【系統自動偵測】') ? '系統定期保養' :
+                          task.reporter_type === 'public' ? '一般民眾' : '健身房員工'
+                        }
+                      </span>
                     </div>
                   </div>
                   {/* 按鈕區 */}
