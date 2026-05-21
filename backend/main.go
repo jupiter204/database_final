@@ -8,11 +8,11 @@ import (
 	"backend/internal/handlers"
 	"backend/internal/middleware"
 
-	// 重要：這裡要引入你專案生成的 docs 資料夾，假設你的 module 名稱是 backend
 	_ "backend/docs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/robfig/cron/v3" // 引入 cron 套件
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -42,6 +42,24 @@ func main() {
 
 	// 初始化 Handler (依賴注入)
 	h := handlers.NewHandler(dbPool)
+
+	// --- 定時任務設定 ---
+	// 1. 初始啟動時立即檢查一次
+	go h.CheckAndCreateMaintenanceTasks()
+
+	// 2. 設定每日上午兩點自動檢查
+	c := cron.New()
+	// "0 2 * * *" 代表每日 02:00
+	_, err := c.AddFunc("0 2 * * *", func() {
+		h.CheckAndCreateMaintenanceTasks()
+	})
+	if err != nil {
+		slog.Error("無法啟動定時任務排程", "err", err)
+	} else {
+		c.Start()
+		slog.Info("每日凌晨兩點定期保養檢查排程已啟動")
+	}
+	// --------------------
 
 	r := gin.Default()
 

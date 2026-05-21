@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -797,4 +798,76 @@ func (h *Handler) ResolveMaintenanceRecord(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Record resolved"})
+}
+
+// CheckAndCreateMaintenanceTasks 檢查所有設備，若達到保養週期且無未處理紀錄，則自動新增保養任務
+func (h *Handler) CheckAndCreateMaintenanceTasks() {
+	ctx := context.Background()
+	slog.Info("開始執行設備保養週期自動檢查...")
+
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		slog.Error("自動檢查失敗：無法啟動交易", "err", err)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. 找出 (目前日期 - 最後保養日) >= 保養間隔 的設備
+	// 2. 且該設備目前沒有未解決 (is_resolved = false) 的維修/保養紀錄
+	query := `
+		SELECT e.lid 
+		FROM equipments e
+		WHERE (CURRENT_DATE - e.last_maint_date) >= e.maint_interval
+		  AND NOT EXISTS (
+			  SELECT 1 FROM maintenance_records m 
+			  WHERE m.equipment_id = e.lid AND m.is_resolved = false
+		  )`
+
+	rows, err := tx.Query(ctx, query)
+	if err != nil {
+		slog.Error("自動檢查失敗：查詢設備錯誤", "err", err)
+		return
+	}
+	defer rows.Close()
+
+	var expiredEquipmentIDs []string
+	for rows.Next() {
+		var lid string
+		if err := rows.Scan(&lid); err == nil {
+			expiredEquipmentIDs = append(expiredEquipmentIDs, lid)
+		}
+	}
+
+	if len(expiredEquipmentIDs) == 0 {
+		slog.Info("自動檢查完成：沒有需要保養的設備。")
+		return
+	}
+
+	// 批量插入保養紀錄，並將設備狀態改為 faulty
+	for _, equipID := range expiredEquipmentIDs {
+		// 【修正點】：因應 SQL CHECK 限制，將 'system' 改為 'staff'
+		insertRecordQuery := `
+			INSERT INTO maintenance_records (equipment_id, reporter_type, description, is_resolved, resolve_note, created_at)
+			VALUES ($1, 'staff', '【系統自動偵測】已達定期保養週期，請進行例行檢查。', false, '', $2)`
+		
+		_, err = tx.Exec(ctx, insertRecordQuery, equipID, time.Now())
+		if err != nil {
+			slog.Error("自動建立保養紀錄失敗", "equipment_id", equipID, "err", err)
+			return
+		}
+
+		// 更新設備狀態為 faulty (符合 equipments_status_check 的 'faulty' 限制)
+		_, err = tx.Exec(ctx, "UPDATE equipments SET status = 'faulty' WHERE lid = $1", equipID)
+		if err != nil {
+			slog.Error("自動更新設備狀態失敗", "equipment_id", equipID, "err", err)
+			return
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		slog.Error("自動檢查失敗：交易提交失敗", "err", err)
+		return
+	}
+
+	slog.Info(fmt.Sprintf("自動檢查完成，成功為 %d 台設備建立定期保養任務。", len(expiredEquipmentIDs)))
 }
